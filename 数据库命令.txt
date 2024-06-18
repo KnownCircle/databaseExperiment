@@ -1,0 +1,85 @@
+CREATE TABLE students ( sno varchar(20) primary key, sname varchar(30), sex char(3), bdate date, height decimal(3,2), dorm varchar(30));
+
+insert into students(sno, sname, sex, bdate, height, dorm) values ('01032011', '王涛', '男', '2003-4-5' , 1.72 , '东6舍221');
+
+create table course (cno varchar(30)primary key, cname varchar(50), period integer, cerdit integer, teacher varchar(30));
+
+create table sc
+(sno varchar(20) not null, cno varchar(30) not null, grade decimal(4,1) default null,
+primary key(sno, cno), 
+foreign key(sno) references students on delete cascade,
+foreign key(cno) references course on delete cascade,
+check ((grade is null) OR (grade between 0 and 100)));
+
+alter table course rename column cerdit to credit;
+
+select cno,cname,credit from course where cno like 'EE%';
+
+select students.sno, cno, grade 
+from students, sc 
+where students.sno=sc.sno and students.sex='女' 
+and students.sno not in (select sno from sc where cno='CS-02');
+
+select * from students
+where bdate between '2002-01-01' and '2003-12-31';
+
+
+select students.sno, students.sname, SUM(credit)
+from students,course,sc
+where students.sno=sc.sno and course.cno=sc.cno
+group by students.sno;
+
+select sno from sc
+where cno='CS-01'
+ORDER BY grade DESC
+LIMIT 1 OFFSET 1;
+
+select students.sno, students.sname, AVG(grade) from students,sc
+where students.sno=sc.sno
+group by students.sno having AVG(grade) >
+(select AVG(grade) from sc where sno in (select sno from students where sname='王涛'))
+order by sno DESC;
+
+select sname, SUM(credit) from students, course, sc scx
+where students.sno=scx.sno and course.cno =scx.cno 
+and not exists(
+    select * from sc scy
+    where scy.cno like 'CS%' and not exists
+    (select * from sc scz where scz.sno=scx.sno and scz.cno=scy.cno)
+) group by students.sno;
+
+
+select students.sno, students.sname from students, sc
+where students.sno=sc.sno group by students.sno having count(sc.cno) >= 3
+order by AVG(grade) DESC LIMIT 1;
+
+insert into students(sno, sname, sex, bdate, height, dorm)
+values('01032005','刘竞','男','2003-12-10',1.75,'东14舍312');
+
+update students set sname='刘竞',sex='男',bdate='2003-12-10',height=1.75,dorm='东14舍312' where sno='01032005';
+
+insert into course(cno, cname, period, credit,teacher) values('CS-03','离散数学',64,4,'陈建明');
+
+delete from students where sno in
+(select distinct students.sno from students, course, sc 
+where students.sno=sc.sno and course.cno=sc.cno group by students.sno having SUM(credit>60) );
+
+update course set period=64, credit=credit+1 where cname='信号与系统' and teacher='张明';
+
+create view dorm_e18 as
+select sno, sname, bdate, height from students
+where dorm like '东18舍%';
+
+create view zm(cno, cname, avg_g) as
+select course.cno, course.cname, AVG(grade) from course, sc
+where course.cno=sc.cno and teacher='张明'
+group by course.cno;
+
+create view ai_student as
+select students.sno, students.sname, sc.grade from students, course, sc
+where students.sno=sc.sno and course.cno=sc.cno and cname='人工智能';
+
+alter table course alter column cname type varchar(200);
+
+alter table course alter column teacher type varchar(500);
+
